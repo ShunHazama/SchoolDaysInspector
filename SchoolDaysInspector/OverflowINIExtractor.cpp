@@ -29,7 +29,7 @@ std::unordered_map<std::string, std::string> OverflowINIExtractor::ExtractOverfl
 	//Ensure file exists
 	if (!fs::exists(filePath))
 	{
-		throw std::invalid_argument(std::format("File ({}) does not exist", filePath));
+		throw std::invalid_argument(StringConverter::ConvertWideStringToANSI(std::format(L"File ({}) does not exist", filePath)));
 	}
 
 	//Fill the result map with values, where each line formatted as [key]="value" is added to the map

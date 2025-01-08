@@ -6,6 +6,8 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include "ScriptObject.h"
+#include <optional>
 
 namespace fs = std::filesystem;
 
@@ -33,75 +35,54 @@ void TextSchoolDays(int startRouteIndex = 0, int startSceneIndex = 0)
 		currentRouteIndex = filmEngine.GetFlagValue(L"ROUTE");
 		currentSceneIndex = filmEngine.GetFlagValue(L"SCENE");
 
-		//Get the relative script path
-		std::wstring relativeScriptPath = buffer;
-
-		//Convert all / to \ in relative script path
-		std::replace(relativeScriptPath.begin(), relativeScriptPath.end(), L'/', L'\\');
-
-		//Add extension to relative script path
-		relativeScriptPath = fs::path(relativeScriptPath).replace_extension(L".ENG.ORS");
-
-		//Print the current relative script path
-		std::wcout << std::format(L"Current relative script path: {} ({},{})\n", relativeScriptPath, currentRouteIndex, currentSceneIndex);
-
-		//Print the entire script
-		std::wstring fullScriptPath = (fs::path(rootScript) / relativeScriptPath);
-		std::ifstream scriptStream(fullScriptPath);
-		if(!scriptStream.is_open())
+		//Get the script (if the script is not openable, just move onto next one)
+		std::optional<ScriptObject> possibleCurrentScript;
+		try
 		{
-			//For some reason, School Days has a bug, where they will try to load scripts that don't exist. They cope by just loading the next
+			possibleCurrentScript = ScriptObject(buffer, currentRouteIndex, currentSceneIndex);
+		}
+		catch (std::invalid_argument)
+		{
 			GetNextScriptFile(&filmEngine, buffer, BUFFER_SIZE);
 			continue;
 		}
-		std::cout << scriptStream.rdbuf();
+		ScriptObject currentScript = possibleCurrentScript.value();
+
+		//Print the current relative script path
+		std::wcout << std::format(L"Current relative script path: {} ({},{})\n", currentScript.GetRelativePath(), currentRouteIndex, currentSceneIndex);
+
+		//Print the entire script
+		std::cout << currentScript.PrintScript();
 		std::cout << "\n\n";
 
-		//Seek back to beginning of file
-		scriptStream.seekg(0);
-
-		//Check if the script has [SetSELECT] command and find the line
-		std::string setSelectCommand = "[SetSELECT]";
-		std::string setSelectLine;
-		while (std::getline(scriptStream, setSelectLine))
+		//Check if there are choices in the scene
+		if (currentScript.IsChoiceScript())
 		{
-			if (setSelectLine.find(setSelectCommand) != std::string::npos)
+			//Print the choices
+			std::cout << "Silence (-1)\n";
+			std::cout << "Top choice (0): " << currentScript.GetTopChoice() << "\n";
+			if (currentScript.IsBottomChoiceDefined())
 			{
-				//Take the line and split by tabs. The second and third elements are the top and bottom choices
-				std::vector<std::string> lineElements = OverflowINIExtractor::SplitByString(setSelectLine, "\t");
+				std::cout << "Bottom choice (1): " << currentScript.GetBottomChoice() << "\n";
+			}
 
-				//Print the choices
-				bool isBottomChoiceDefined = lineElements[2] != "null";
-				std::cout << "Silence (-1)\n";
-				std::cout << "Top choice (0): " << lineElements[1] << "\n";
-				if (isBottomChoiceDefined)
-				{
-					std::cout << "Bottom choice (1): " << lineElements[2] << "\n";
-				}
-
-				//Get the user input
-				int userInput = -2;
-				bool isUserInputValid = false;
+			//Get the user input
+			int userInput = -2;
+			bool isUserInputValid = false;
+			do
+			{
 				do
 				{
-					do
-					{
-						std::cin.clear();
-						std::cin >> userInput;
-					} 
-					while (std::cin.fail());
+					std::cin.clear();
+					std::cin >> userInput;
+				} while (std::cin.fail());
 
-					isUserInputValid = userInput == -1 || userInput == 0 || (userInput == 1 && isBottomChoiceDefined);
-				} 
-				while (!isUserInputValid);
+				isUserInputValid = userInput == -1 || userInput == 0 || (userInput == 1 && currentScript.IsBottomChoiceDefined());
+			} while (!isUserInputValid);
 
-				//Set the last choice, trigger a SetFeeling
-				filmEngine.LastFeelingSelection = userInput;
-				SetFeeling(&filmEngine, 1);
-
-				//Exit the loop going through every line
-				break;
-			}
+			//Set the last choice, trigger a SetFeeling
+			filmEngine.LastFeelingSelection = userInput;
+			SetFeeling(&filmEngine, 1);
 		}
 
 		//Get the next script

@@ -18,11 +18,12 @@ private:
 	std::wstring GetFullPath();
 
 public:
-	ScriptObject(wchar_t* inputBuffer, int routeIndex, int sceneIndex);
+	ScriptObject(const wchar_t* inputBuffer, int routeIndex, int sceneIndex);
 
+	std::wstring GetRelativePath();
 	std::string PrintScript();
 	bool IsChoiceScript();
 	std::string GetTopChoice();
-	bool IsSecondChoiceDefined();
+	bool IsBottomChoiceDefined();
 	std::string GetBottomChoice();
 };

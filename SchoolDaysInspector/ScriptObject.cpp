@@ -7,7 +7,7 @@
 
 namespace fs = std::filesystem;
 
-ScriptObject::ScriptObject(wchar_t* inputBuffer, int routeIndex, int sceneIndex)
+ScriptObject::ScriptObject(const wchar_t* inputBuffer, int routeIndex, int sceneIndex)
 {
 	RelativePath = inputBuffer;
 
@@ -56,6 +56,11 @@ std::wstring ScriptObject::GetFullPath()
 	return fs::path(Constants::SCRIPT_ROOT_PATH) / RelativePath;
 }
 
+std::wstring ScriptObject::GetRelativePath()
+{
+	return RelativePath;
+}
+
 std::string ScriptObject::PrintScript()
 {
 	std::ifstream scriptStream(GetFullPath());
@@ -80,7 +85,7 @@ std::string ScriptObject::GetTopChoice()
 	return TopAndBottomChoices.at(0);
 }
 
-bool ScriptObject::IsSecondChoiceDefined()
+bool ScriptObject::IsBottomChoiceDefined()
 {
 	return TopAndBottomChoices.size() == 2;
 }
